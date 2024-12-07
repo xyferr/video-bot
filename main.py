@@ -1,60 +1,10 @@
-import asyncio
 import aiohttp
+import asyncio
 import os
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from tqdm import tqdm
-
-FLIC_TOKEN=os.environ.get("FLIC_TOKEN")
-UPLOAD_URL_API = "https://api.socialverseapp.com/posts/generate-upload-url"
-CREATE_POST_API = "https://api.socialverseapp.com/posts"
-
-
-class DirectoryMonitor(FileSystemEventHandler):
-    def __init__(self, upload_func):
-        self.upload_func = upload_func
-
-    def on_created(self, event):
-        if event.src_path.endswith(".mp4"):
-            print(f"New file detected: {event.src_path}")
-            asyncio.run(self.upload_func(event.src_path))
-
-
-async def get_upload_url(session):
-    headers = {"Flic-Token": FLIC_TOKEN, "Content-Type": "application/json"}
-    async with session.get(UPLOAD_URL_API, headers=headers) as response:
-        if response.status == 200:
-            return await response.json()
-        else:
-            print("Failed to fetch upload URL")
-            return None
-
-
-async def upload_video(session, file_path, upload_url):
-    with open(file_path, "rb") as file:
-        async with session.put(upload_url, data=file) as response:
-            if response.status == 200:
-                print(f"Uploaded: {file_path}")
-                return True
-            else:
-                print(f"Failed to upload: {file_path}")
-                return False
-
-
-async def create_post(session, title, video_hash, category_id=1):
-    headers = {"Flic-Token": FLIC_TOKEN, "Content-Type": "application/json"}
-    data = {
-        "title": title,
-        "hash": video_hash,
-        "is_available_in_public_feed": False,
-        "category_id": category_id,
-    }
-    async with session.post(CREATE_POST_API, json=data, headers=headers) as response:
-        if response.status == 200:
-            print("Post created successfully!")
-        else:
-            print("Failed to create post")
-
+from upload import get_upload_url, upload_video
+from create_post import create_post
 
 async def upload_process(file_path):
     async with aiohttp.ClientSession() as session:
@@ -67,6 +17,14 @@ async def upload_process(file_path):
                 os.remove(file_path)
                 print(f"Deleted: {file_path}")
 
+class DirectoryMonitor(FileSystemEventHandler):
+    def __init__(self, upload_func):
+        self.upload_func = upload_func
+
+    def on_created(self, event):
+        if event.src_path.endswith(".mp4"):
+            print(f"New file detected: {event.src_path}")
+            asyncio.run(self.upload_func(event.src_path))
 
 def main():
     path_to_watch = "videos"
@@ -82,7 +40,6 @@ def main():
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
-
 
 if __name__ == "__main__":
     main()
