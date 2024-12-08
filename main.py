@@ -7,17 +7,22 @@ from upload import get_upload_url, upload_video
 from create_post import create_post
 
 async def upload_process(file_path):
+    """Handles the upload process for a new video file."""
     async with aiohttp.ClientSession() as session:
         upload_data = await get_upload_url(session)
         if upload_data:
             upload_url = upload_data["url"]
             video_hash = upload_data["hash"]
-            if await upload_video(session, file_path, upload_url):
+            success = await upload_video(session , file_path, upload_url)
+            if success:
                 await create_post(session, os.path.basename(file_path), video_hash)
                 os.remove(file_path)
                 print(f"Deleted: {file_path}")
+        else:
+            print("Failed to get upload URL")
 
 class DirectoryMonitor(FileSystemEventHandler):
+    """Monitors directory for new files and triggers upload."""
     def __init__(self, upload_func):
         self.upload_func = upload_func
 
@@ -28,6 +33,9 @@ class DirectoryMonitor(FileSystemEventHandler):
 
 def main():
     path_to_watch = "videos"
+    if not os.path.exists(path_to_watch):
+        os.makedirs(path_to_watch)
+
     monitor = DirectoryMonitor(upload_process)
     observer = Observer()
     observer.schedule(monitor, path_to_watch, recursive=False)
