@@ -3,7 +3,7 @@ import os
 
 FLIC_TOKEN = os.environ.get("FLIC_TOKEN")
 
-async def create_post(session, title, video_hash, category_id=1):
+async def create_post(session, title, video_hash, category_id=25):
     headers = {"Flic-Token": FLIC_TOKEN, "Content-Type": "application/json"}
     data = {
         "title": "Motivation",
